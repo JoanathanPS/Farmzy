@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmzy Dashboard - Unified Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 px-4 py-4 lg:px-6">
+        <div class="flex flex-wrap justify-between items-center mx-auto max-w-screen-xl">
+            <div class="flex items-center">
+                <span class="self-center text-xl font-semibold whitespace-nowrap text-gray-900">🌾 Farmzy</span>
+                <span class="ml-4 text-sm text-gray-500">Unified Intelligence Dashboard</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 transition-all">
+                    Module View
+                </a>
+                <a href="/visualization" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 transition-all">
+                    3D View
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-6 lg:px-6">
+        <!-- Page Header -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Farm Intelligence Dashboard</h1>
+                    <p class="text-gray-600">Real-time insights across all modules - Soil, Water, Finance, Weather & Market</p>
+                </div>
+                <button onclick="loadDashboard()" 
+                    class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-200 transition-all">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh All
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="loading" class="space-y-6">
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow animate-pulse">
+                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow animate-pulse">
+                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow animate-pulse">
+                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow animate-pulse">
+                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content" style="display: none;" class="space-y-6">
+            <!-- Top KPI Cards -->
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
+                <!-- Soil Health -->
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Soil Health</h3>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-gray-900" id="kpi-soil-score">-</p>
+                        <span class="ml-2 text-sm font-medium text-gray-500">/ 100</span>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600" id="kpi-soil-status">Loading...</p>
+                </div>
+
+                <!-- Irrigation Status -->
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Irrigation</h3>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-gray-900" id="kpi-water">-</p>
+                        <span class="ml-2 text-sm font-medium text-gray-500">Liters</span>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600" id="kpi-irrigation-status">Loading...</p>
+                </div>
+
+                <!-- Net Profit -->
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Net Profit</h3>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-gray-900" id="kpi-profit">-</p>
+                        <span class="ml-2 text-sm font-medium text-gray-500">₹</span>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600" id="kpi-profit-per-acre">Loading...</p>
+                </div>
+
+                <!-- Water Savings -->
+                <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Water Savings</h3>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-gray-900" id="kpi-savings">-</p>
+                        <span class="ml-2 text-sm font-medium text-gray-500">%</span>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600" id="kpi-savings-amount">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Main Grid -->
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <!-- Soil & Irrigation -->
+                <div class="space-y-6">
+                    <!-- Soil Status -->
+                    <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Soil Status</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm text-gray-600">Moisture</span>
+                                    <span class="text-sm font-medium text-gray-900" id="soil-moisture">-</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-600 h-2 rounded-full transition-all" id="soil-moisture-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-xs text-gray-500 mb-1">Nitrogen</div>
+                                    <div class="text-sm font-semibold text-gray-900" id="soil-n">-</div>
+                                </div>
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-xs text-gray-500 mb-1">Phosphorus</div>
+                                    <div class="text-sm font-semibold text-gray-900" id="soil-p">-</div>
+                                </div>
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-xs text-gray-500 mb-1">Potassium</div>
+                                    <div class="text-sm font-semibold text-gray-900" id="soil-k">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Irrigation Decision -->
+                    <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Irrigation Decision</h2>
+                        <div id="irrigation-alert" class="mb-4"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-4 bg-gray-50 rounded-lg">
+                                <div class="text-xs text-gray-500 mb-1">Duration</div>
+                                <div class="text-lg font-semibold text-gray-900" id="irrigation-duration">-</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-lg">
+                                <div class="text-xs text-gray-500 mb-1">Zones</div>
+                                <div class="text-lg font-semibold text-gray-900" id="irrigation-zones">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finance & Market -->
+                <div class="space-y-6">
+                    <!-- Finance Summary -->
+                    <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Finance Summary</h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Income</span>
+                                <span class="text-sm font-semibold text-green-600" id="finance-income">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Expenses</span>
+                                <span class="text-sm font-semibold text-red-600" id="finance-expenses">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Water Savings</span>
+                                <span class="text-sm font-semibold text-blue-600" id="finance-water-savings">-</span>
+                            </div>
+                            <div class="pt-3 border-t border-gray-200 flex justify-between">
+                                <span class="text-sm font-medium text-gray-900">Net Profit</span>
+                                <span class="text-lg font-bold text-gray-900" id="finance-net-profit">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Insights -->
+                    <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Market Insights</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1">Quality Grade</div>
+                                <div class="text-lg font-semibold text-gray-900" id="market-quality">-</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1">Suggested Price</div>
+                                <div class="text-xl font-bold text-primary-600" id="market-price">-</div>
+                            </div>
+                            <div class="pt-3 border-t border-gray-200">
+                                <div class="text-xs text-gray-500 mb-2">Buyer Options</div>
+                                <div id="market-buyers" class="space-y-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather Advisory -->
+            <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                <h2 class="text-lg font-semibold text-gray-900 mb-6">Weather Advisory</h2>
+                <div id="weather-advisory" class="p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700" id="weather-advice-text">Loading weather data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function loadDashboard() {
+            const loading = document.getElementById('loading');
+            const content = document.getElementById('dashboard-content');
+            
+            loading.style.display = 'block';
+            content.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/unified/dashboard`);
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                const data = await response.json();
+
+                updateDashboard(data);
+                
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                loading.innerHTML = `
+                    <div class="p-6 bg-white border border-gray-200 rounded-lg shadow">
+                        <div class="p-4 bg-red-50 border-l-4 border-red-400 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Error Loading Dashboard</h3>
+                                    <p class="mt-2 text-sm text-red-700">${error.message}</p>
+                                    <button onclick="loadDashboard()" class="mt-3 text-sm font-medium text-red-800 hover:text-red-900 underline">
+                                        Try again
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function updateDashboard(data) {
+            const soil = data.soil;
+            const irrigation = data.irrigation;
+            const finance = data.finance;
+            const market = data.market;
+            const weather = data.weather;
+
+            // Top KPIs
+            document.getElementById('kpi-soil-score').textContent = soil.soilScore || 0;
+            document.getElementById('kpi-soil-status').textContent = 
+                soil.soilScore >= 80 ? 'Excellent' : soil.soilScore >= 60 ? 'Good' : 'Needs Attention';
+            
+            document.getElementById('kpi-water').textContent = irrigation.irrigate 
+                ? Math.round(irrigation.waterLiters).toLocaleString() 
+                : '0';
+            document.getElementById('kpi-irrigation-status').textContent = irrigation.irrigate 
+                ? 'Irrigation Recommended' 
+                : 'Not Required';
+            
+            document.getElementById('kpi-profit').textContent = '₹' + Math.round(finance.netProfit).toLocaleString();
+            document.getElementById('kpi-profit-per-acre').textContent = 
+                '₹' + Math.round(finance.profitPerAcre).toLocaleString() + ' per acre';
+            
+            document.getElementById('kpi-savings').textContent = irrigation.waterSavedPercent.toFixed(1);
+            document.getElementById('kpi-savings-amount').textContent = 
+                '₹' + Math.round(finance.waterSavings).toLocaleString() + ' saved';
+
+            // Soil Status
+            document.getElementById('soil-moisture').textContent = soil.moisture.toFixed(1) + '%';
+            document.getElementById('soil-moisture-bar').style.width = soil.moisture + '%';
+            document.getElementById('soil-n').textContent = soil.nutrientStatus.N;
+            document.getElementById('soil-p').textContent = soil.nutrientStatus.P;
+            document.getElementById('soil-k').textContent = soil.nutrientStatus.K;
+
+            // Irrigation
+            const irrigationAlert = document.getElementById('irrigation-alert');
+            if (irrigation.irrigate) {
+                irrigationAlert.innerHTML = `
+                    <div class="p-3 bg-green-50 border-l-4 border-green-400 rounded">
+                        <p class="text-sm text-green-700">✅ Irrigation recommended</p>
+                    </div>
+                `;
+            } else {
+                irrigationAlert.innerHTML = `
+                    <div class="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                        <p class="text-sm text-yellow-700">⏸️ Irrigation not required</p>
+                    </div>
+                `;
+            }
+            document.getElementById('irrigation-duration').textContent = irrigation.durationMinutes + ' min';
+            document.getElementById('irrigation-zones').textContent = irrigation.zones.length;
+
+            // Finance
+            document.getElementById('finance-income').textContent = '₹' + Math.round(finance.income).toLocaleString();
+            document.getElementById('finance-expenses').textContent = '₹' + Math.round(finance.expenses.total).toLocaleString();
+            document.getElementById('finance-water-savings').textContent = '₹' + Math.round(finance.waterSavings).toLocaleString();
+            document.getElementById('finance-net-profit').textContent = '₹' + Math.round(finance.netProfit).toLocaleString();
+
+            // Market
+            document.getElementById('market-quality').textContent = market.qualityGrade;
+            document.getElementById('market-price').textContent = '₹' + Math.round(market.suggestedPrice).toLocaleString() + ' / quintal';
+            const buyersList = document.getElementById('market-buyers');
+            buyersList.innerHTML = market.buyers.map(b => `
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">${b.name}</span>
+                    <span class="font-medium text-gray-900">₹${Math.round(b.price).toLocaleString()}</span>
+                </div>
+            `).join('');
+
+            // Weather
+            document.getElementById('weather-advice-text').textContent = weather.advice;
+        }
+
+        // Load on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
