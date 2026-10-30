@@ -1,6 +1,6 @@
 site:
   name: Farmzy
-  site: 'https://farmzy.app'
+  site: 'https://farmzy.joanathan.in'
   base: '/'
   trailingSlash: false
 
