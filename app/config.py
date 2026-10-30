@@ -6,16 +6,16 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings."""
     
-    # Database (Supabase PostgreSQL)
-    # Format: postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres
-    database_url: str = "postgresql://user:password@localhost:5432/farmzy_db"
+    # Supabase PostgreSQL Database URL
+    # Format: postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+    database_url: Optional[str] = None
     
-    # Supabase (optional - for direct Supabase client usage)
+    # Supabase API (optional - for direct Supabase client usage)
     supabase_url: Optional[str] = None
-    supabase_key: Optional[str] = None  # Service role key or anon key
+    supabase_key: Optional[str] = None
     
-    # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    # Redis (Optional)
+    redis_url: Optional[str] = None
     
     # ThingSpeak API
     thingspeak_api_key: Optional[str] = None
@@ -26,14 +26,14 @@ class Settings(BaseSettings):
     weather_api_key: Optional[str] = None
     
     # JWT
-    secret_key: str = "your-secret-key-here-change-in-production"
+    secret_key: str = "farmzy-secure-secret-key-change-in-production"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     
     # App
     app_name: str = "Farmzy"
     app_version: str = "1.0.0"
-    debug: bool = True
+    debug: bool = False
     
     class Config:
         env_file = ".env"
@@ -41,4 +41,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

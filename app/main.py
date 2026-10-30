@@ -9,15 +9,13 @@ from app.config import settings
 # Try to import database and routers (may fail if DB not configured)
 try:
     from app.database import engine, Base
-    # Create database tables
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as db_error:
-        print(f"Warning: Database initialization failed: {db_error}")
-        print("Server will start but database features may not work.")
+    if engine:
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as db_error:
+            print(f"Warning: Database initialization failed: {db_error}")
 except Exception as import_error:
     print(f"Warning: Could not import database module: {import_error}")
-    print("Server will start but database features will not be available.")
 
 try:
     from app.api import soil, irrigation, unified, marketplace, delivery
