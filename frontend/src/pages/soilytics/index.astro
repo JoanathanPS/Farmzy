@@ -1,0 +1,236 @@
+---
+import { Icon } from 'astro-icon/components';
+import PageLayout from '~/layouts/PageLayout.astro';
+import { soilyticsAPI } from '~/lib/api/soilytics';
+
+const metadata = {
+  title: 'Soilytics - Soil Intelligence',
+  description: 'Real-time soil health analytics and recommendations',
+};
+
+const deviceId = 'ESP_FARM_01';
+
+let soilHealth = null;
+let degradationTrends = null;
+
+try {
+  soilHealth = await soilyticsAPI.getSoilHealth(deviceId).catch(() => null);
+  degradationTrends = await soilyticsAPI.getDegradationTrends(deviceId, 30).catch(() => null);
+} catch (e) {
+  console.error('Error fetching soil data:', e);
+}
+
+const getStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    very_low: 'text-red-600 bg-red-100 dark:bg-red-900',
+    low: 'text-orange-600 bg-orange-100 dark:bg-orange-900',
+    medium: 'text-green-600 bg-green-100 dark:bg-green-900',
+    high: 'text-blue-600 bg-blue-100 dark:bg-blue-900',
+    excess: 'text-purple-600 bg-purple-100 dark:bg-purple-900',
+  };
+  return colors[status] || colors.medium;
+};
+---
+
+<PageLayout metadata={metadata}>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-12">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">
+        Soilytics
+      </h1>
+      <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+        Soil Intelligence & Analytics Dashboard
+      </p>
+    </div>
+
+    {soilHealth ? (
+      <div class="space-y-8">
+        <!-- Soil Health Score Card -->
+        <div class="rounded-lg bg-gradient-to-r from-green-500 to-green-600 p-8 text-white shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium opacity-90">Overall Soil Health Score</p>
+              <p class="mt-2 text-6xl font-bold">{soilHealth.soil_score.toFixed(0)}</p>
+              <p class="mt-2 text-sm opacity-90">out of 100</p>
+            </div>
+            <div class="rounded-full bg-white/20 p-6">
+              <Icon name="tabler:plant" class="h-12 w-12" />
+            </div>
+          </div>
+        </div>
+
+        <!-- NPK Status Grid -->
+        <div class="grid gap-6 md:grid-cols-3">
+          <!-- Nitrogen -->
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Nitrogen (N)</h3>
+              <span class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(soilHealth.nitrogen.status)}`}>
+                {soilHealth.nitrogen.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">
+              {soilHealth.nitrogen.value}
+            </p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">mg/kg</p>
+          </div>
+
+          <!-- Phosphorus -->
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Phosphorus (P)</h3>
+              <span class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(soilHealth.phosphorus.status)}`}>
+                {soilHealth.phosphorus.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">
+              {soilHealth.phosphorus.value}
+            </p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">mg/kg</p>
+          </div>
+
+          <!-- Potassium -->
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Potassium (K)</h3>
+              <span class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(soilHealth.potassium.status)}`}>
+                {soilHealth.potassium.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">
+              {soilHealth.potassium.value}
+            </p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">mg/kg</p>
+          </div>
+        </div>
+
+        <!-- pH and Moisture -->
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">pH Level</h3>
+            <div class="flex items-center justify-between">
+              <p class="text-4xl font-bold text-gray-900 dark:text-white">
+                {soilHealth.ph.value.toFixed(1)}
+              </p>
+              <span class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(soilHealth.ph.status)}`}>
+                {soilHealth.ph.status}
+              </span>
+            </div>
+            <div class="mt-4 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+              <div
+                class="h-2 rounded-full bg-blue-600"
+                style={`width: ${(soilHealth.ph.value / 14) * 100}%`}
+              ></div>
+            </div>
+          </div>
+
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Moisture</h3>
+            <div class="flex items-center justify-between">
+              <p class="text-4xl font-bold text-gray-900 dark:text-white">
+                {soilHealth.moisture.value.toFixed(1)}%
+              </p>
+              <span class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(soilHealth.moisture.status)}`}>
+                {soilHealth.moisture.status}
+              </span>
+            </div>
+            <div class="mt-4 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+              <div
+                class="h-2 rounded-full bg-green-600"
+                style={`width: ${soilHealth.moisture.value}%`}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Degradation Index -->
+        <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+          <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+            Soil Degradation Index
+          </h3>
+          <div class="flex items-center justify-between">
+            <p class="text-4xl font-bold text-gray-900 dark:text-white">
+              {soilHealth.degradation_index.toFixed(1)}
+            </p>
+            <div class="text-right">
+              {soilHealth.degradation_index < 20 && (
+                <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-600 dark:bg-green-900">
+                  Healthy
+                </span>
+              )}
+              {soilHealth.degradation_index >= 20 && soilHealth.degradation_index < 50 && (
+                <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-600 dark:bg-yellow-900">
+                  Moderate
+                </span>
+              )}
+              {soilHealth.degradation_index >= 50 && (
+                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-600 dark:bg-red-900">
+                  Degrading
+                </span>
+              )}
+            </div>
+          </div>
+          <div class="mt-4 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+            <div
+              class="h-2 rounded-full bg-orange-600"
+              style={`width: ${soilHealth.degradation_index}%`}
+            ></div>
+          </div>
+        </div>
+
+        <!-- Recommendations -->
+        {soilHealth.recommendations && (
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+              Recommendations
+            </h3>
+            <div class="space-y-3">
+              {soilHealth.recommendations.nitrogen && (
+                <div class="flex items-start rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+                  <Icon name="tabler:info-circle" class="mr-3 mt-0.5 h-5 w-5 text-blue-600" />
+                  <div>
+                    <p class="font-medium text-blue-900 dark:text-blue-100">Nitrogen</p>
+                    <p class="text-sm text-blue-700 dark:text-blue-300">
+                      {soilHealth.recommendations.nitrogen}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {soilHealth.recommendations.phosphorus && (
+                <div class="flex items-start rounded-lg bg-purple-50 p-4 dark:bg-purple-900/20">
+                  <Icon name="tabler:info-circle" class="mr-3 mt-0.5 h-5 w-5 text-purple-600" />
+                  <div>
+                    <p class="font-medium text-purple-900 dark:text-purple-100">Phosphorus</p>
+                    <p class="text-sm text-purple-700 dark:text-purple-300">
+                      {soilHealth.recommendations.phosphorus}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {soilHealth.recommendations.irrigation && (
+                <div class="flex items-start rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
+                  <Icon name="tabler:info-circle" class="mr-3 mt-0.5 h-5 w-5 text-green-600" />
+                  <div>
+                    <p class="font-medium text-green-900 dark:text-green-100">Irrigation</p>
+                    <p class="text-sm text-green-700 dark:text-green-300">
+                      {soilHealth.recommendations.irrigation}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    ) : (
+      <div class="rounded-lg bg-white p-12 text-center shadow-lg dark:bg-gray-800">
+        <Icon name="tabler:plant-off" class="mx-auto h-12 w-12 text-gray-400" />
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
+          No soil data available. Please check your sensor connection.
+        </p>
+      </div>
+    )}
+  </div>
+</PageLayout>
+

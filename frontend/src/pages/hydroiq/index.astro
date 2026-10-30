@@ -1,0 +1,196 @@
+---
+import { Icon } from 'astro-icon/components';
+import PageLayout from '~/layouts/PageLayout.astro';
+import { hydroiqAPI } from '~/lib/api/hydroiq';
+
+const metadata = {
+  title: 'HydroIQ - Smart Irrigation',
+  description: 'AI-powered irrigation decisions and water management',
+};
+
+const farmId = 'FARM_PNL_01';
+
+let irrigationDecision = null;
+
+try {
+  irrigationDecision = await hydroiqAPI.computeIrrigation({ farm_id: farmId }).catch(() => null);
+} catch (e) {
+  console.error('Error fetching irrigation data:', e);
+}
+---
+
+<PageLayout metadata={metadata}>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-12">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">
+        HydroIQ
+      </h1>
+      <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+        Smart Irrigation Intelligence Engine
+      </p>
+    </div>
+
+    {irrigationDecision?.decision ? (
+      <div class="space-y-8">
+        <!-- Irrigation Decision Card -->
+        <div
+          class={`rounded-lg p-8 shadow-lg ${
+            irrigationDecision.decision.irrigate
+              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+              : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+          }`}
+        >
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium opacity-90">Irrigation Decision</p>
+              <p class="mt-2 text-6xl font-bold">
+                {irrigationDecision.decision.irrigate ? 'IRRIGATE' : 'HOLD'}
+              </p>
+              <p class="mt-2 text-sm opacity-90">
+                Confidence: {(irrigationDecision.decision.confidence * 100).toFixed(0)}%
+              </p>
+            </div>
+            <div class="rounded-full bg-white/20 p-6">
+              <Icon
+                name={irrigationDecision.decision.irrigate ? 'tabler:droplet-filled' : 'tabler:droplet-off'}
+                class="h-12 w-12"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Water Requirements -->
+        {irrigationDecision.decision.irrigate && (
+          <div class="grid gap-6 md:grid-cols-3">
+            <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+              <div class="mb-4 flex items-center">
+                <Icon name="tabler:droplet" class="mr-3 h-6 w-6 text-blue-600" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Water Required</h3>
+              </div>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white">
+                {irrigationDecision.decision.net_water_liters.toLocaleString()}
+              </p>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">liters</p>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+              <div class="mb-4 flex items-center">
+                <Icon name="tabler:clock" class="mr-3 h-6 w-6 text-green-600" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Duration</h3>
+              </div>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white">
+                {Math.round(irrigationDecision.decision.net_water_liters / 2000)}h
+              </p>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">estimated</p>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+              <div class="mb-4 flex items-center">
+                <Icon name="tabler:chart-line" class="mr-3 h-6 w-6 text-purple-600" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Zones</h3>
+              </div>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white">
+                {irrigationDecision.decision.zones.length}
+              </p>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">active zones</p>
+            </div>
+          </div>
+        )}
+
+        <!-- Zones -->
+        {irrigationDecision.decision.zones.length > 0 && (
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Zone Distribution</h3>
+            <div class="grid gap-4 md:grid-cols-2">
+              {irrigationDecision.decision.zones.map((zone) => (
+                <div
+                  class="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                  key={zone.zone_id}
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-white">{zone.zone_id}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {zone.water_liters.toLocaleString()} liters
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">
+                        {zone.duration_minutes} min
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <!-- Computed Values -->
+        {irrigationDecision.decision.computed_values && (
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Computed Values</h3>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {irrigationDecision.decision.computed_values.et0_mm && (
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">ET₀</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {irrigationDecision.decision.computed_values.et0_mm.toFixed(2)} mm/day
+                  </p>
+                </div>
+              )}
+              {irrigationDecision.decision.computed_values.etcrop_mm && (
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">ETcrop</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {irrigationDecision.decision.computed_values.etcrop_mm.toFixed(2)} mm/day
+                  </p>
+                </div>
+              )}
+              {irrigationDecision.decision.computed_values.trigger_threshold_pct && (
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Trigger Threshold</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {irrigationDecision.decision.computed_values.trigger_threshold_pct.toFixed(1)}%
+                  </p>
+                </div>
+              )}
+              {irrigationDecision.decision.computed_values.effective_rain_mm && (
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Effective Rain</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {irrigationDecision.decision.computed_values.effective_rain_mm.toFixed(2)} mm
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <!-- Reasons -->
+        {irrigationDecision.decision.reasons.length > 0 && (
+          <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Decision Reasons</h3>
+            <ul class="space-y-2">
+              {irrigationDecision.decision.reasons.map((reason) => (
+                <li class="flex items-start">
+                  <Icon name="tabler:check" class="mr-2 mt-0.5 h-5 w-5 text-green-600" />
+                  <span class="text-gray-700 dark:text-gray-300">{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    ) : (
+      <div class="rounded-lg bg-white p-12 text-center shadow-lg dark:bg-gray-800">
+        <Icon name="tabler:droplet-off" class="mx-auto h-12 w-12 text-gray-400" />
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
+          No irrigation data available. Computing irrigation decision...
+        </p>
+      </div>
+    )}
+  </div>
+</PageLayout>
+

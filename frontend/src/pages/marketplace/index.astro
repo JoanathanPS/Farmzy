@@ -1,0 +1,146 @@
+---
+import { Icon } from 'astro-icon/components';
+import PageLayout from '~/layouts/PageLayout.astro';
+import { marketplaceAPI } from '~/lib/api/marketplace';
+import { soilyticsAPI } from '~/lib/api/soilytics';
+
+const metadata = {
+  title: 'Marketplace - Direct Buy & Sell',
+  description: 'Connect farmers directly with buyers',
+};
+
+const farmId = 'FARM_PNL_01';
+
+let listings = [];
+let pricing = null;
+
+try {
+  const soilData = await soilyticsAPI.getSoilHealth('ESP_FARM_01').catch(() => null);
+  const currentSoilScore = soilData?.soil_score;
+  listings = await marketplaceAPI.getListings(farmId).catch(() => []);
+  if (listings.length > 0 && currentSoilScore !== undefined) {
+    pricing = await marketplaceAPI.getPricing(listings[0].crop, currentSoilScore).catch(() => null);
+  }
+} catch (e) {
+  console.error('Error fetching marketplace data:', e);
+}
+---
+
+<PageLayout metadata={metadata}>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-12">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">
+        Marketplace
+      </h1>
+      <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+        Direct Buy & Sell Platform
+      </p>
+    </div>
+
+    <!-- Pricing Calculator -->
+    {pricing && (
+      <div class="mb-8 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600 p-8 text-white shadow-lg">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium opacity-90">Quality-Based Suggested Price</p>
+            <p class="mt-2 text-5xl font-bold">₹{pricing.suggestedPrice?.toFixed(2)}</p>
+            <p class="mt-2 text-sm opacity-90">
+              Quality Grade: {pricing.qualityGrade} | {pricing.buyersAvailable} verified buyers available
+            </p>
+          </div>
+          <div class="rounded-full bg-white/20 p-6">
+            <Icon name="tabler:currency-rupee" class="h-12 w-12" />
+          </div>
+        </div>
+      </div>
+    )}
+
+    <!-- Listings -->
+    <div class="mb-8">
+      <div class="mb-6 flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Your Produce Listings</h2>
+      </div>
+
+      {listings.length > 0 ? (
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {listings.map((listing) => (
+            <div
+              class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+              key={listing.id}
+            >
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white capitalize">
+                  {listing.crop}
+                </h3>
+                <span
+                  class={`rounded-full px-3 py-1 text-xs font-medium ${
+                    listing.quality_grade === 'A'
+                      ? 'bg-green-100 text-green-600 dark:bg-green-900'
+                      : listing.quality_grade === 'B'
+                        ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700'
+                  }`}
+                >
+                  Grade {listing.quality_grade}
+                </span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Quantity</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    {listing.quantity} kg
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Suggested Price</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    ₹{listing.suggested_price?.toFixed(2)}/kg
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Status</span>
+                  <span class="font-medium capitalize text-green-600">
+                    {listing.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="rounded-lg bg-white p-12 text-center shadow-lg dark:bg-gray-800">
+          <Icon name="tabler:shopping-cart-off" class="mx-auto h-12 w-12 text-gray-400" />
+          <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
+            No active crop listings yet.
+          </p>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-500">
+            When you create listings via the API or backend, they will appear here with soil-score quality pricing.
+          </p>
+        </div>
+      )}
+    </div>
+
+    <!-- Quality Multiplier Info -->
+    <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+      <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Quality-Based Pricing Logic</h3>
+      <div class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
+          <p class="font-semibold text-green-800 dark:text-green-200">Grade A (Premium)</p>
+          <p class="text-xs text-green-700 dark:text-green-300 mt-1">Soil Score ≥ 80</p>
+          <p class="text-sm font-bold text-green-900 dark:text-green-100 mt-2">+15% Price Premium (1.15x)</p>
+        </div>
+        <div class="rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900/20">
+          <p class="font-semibold text-yellow-800 dark:text-yellow-200">Grade B (Good)</p>
+          <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">60 ≤ Soil Score &lt; 80</p>
+          <p class="text-sm font-bold text-yellow-900 dark:text-yellow-100 mt-2">Standard Market Rate (1.0x)</p>
+        </div>
+        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50">
+          <p class="font-semibold text-gray-800 dark:text-gray-200">Grade C (Standard)</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Soil Score &lt; 60</p>
+          <p class="text-sm font-bold text-gray-900 dark:text-gray-100 mt-2">10% Discount (0.9x)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</PageLayout>

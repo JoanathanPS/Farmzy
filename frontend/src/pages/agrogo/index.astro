@@ -1,0 +1,161 @@
+---
+import { Icon } from 'astro-icon/components';
+import PageLayout from '~/layouts/PageLayout.astro';
+import { agrogoAPI } from '~/lib/api/agrogo';
+
+const metadata = {
+  title: 'AgroGo - Rural Delivery',
+  description: 'Last-mile logistics for rural produce',
+};
+
+const farmId = 'FARM_PNL_01';
+
+let routes = [];
+let deliveries = [];
+
+try {
+  const today = new Date().toISOString().split('T')[0];
+  const routesData = await agrogoAPI.getRoutes(today).catch(() => ({ routes: [] }));
+  routes = routesData?.routes || [];
+  deliveries = [];
+} catch (e) {
+  console.error('Error fetching delivery data:', e);
+}
+---
+
+<PageLayout metadata={metadata}>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-12">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">
+        AgroGo
+      </h1>
+      <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+        Rural Delivery & Logistics System
+      </p>
+    </div>
+
+    <!-- Delivery Status Banner -->
+    <div class="mb-8 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 p-8 text-white shadow-lg">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-90">Delivery Status</p>
+          {routes.length > 0 ? (
+            <>
+              <p class="mt-2 text-3xl font-bold">{routes.length} Active Route(s)</p>
+              <p class="mt-2 text-sm opacity-90">
+                Total Distance: {routes.reduce((acc, r) => acc + (r.total_distance || 0), 0).toFixed(1)} km
+              </p>
+            </>
+          ) : (
+            <>
+              <p class="mt-2 text-3xl font-bold">No Deliveries Scheduled</p>
+              <p class="mt-2 text-sm opacity-90">Schedule an order delivery to optimize rural routing</p>
+            </>
+          )}
+        </div>
+        <div class="rounded-full bg-white/20 p-6">
+          <Icon name="tabler:truck" class="h-12 w-12" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Routes -->
+    {routes.length > 0 ? (
+      <div class="mb-8">
+        <h2 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Optimized Routes</h2>
+        <div class="space-y-4">
+          {routes.map((route) => (
+            <div
+              class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+              key={route.route_id}
+            >
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                  Route {route.route_id}
+                </h3>
+                <span class="rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-600 dark:bg-purple-900">
+                  {route.farms?.length || 0} farms
+                </span>
+              </div>
+              <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Total Distance</p>
+                  <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
+                    {route.total_distance?.toFixed(1) || 0} km
+                  </p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Estimated Cost</p>
+                  <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
+                    ₹{route.estimated_cost?.toFixed(2) || 0}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Farms</p>
+                  <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
+                    {route.farms?.map((f) => f.farm_id).join(', ') || farmId}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div class="mb-8 rounded-lg bg-white p-12 text-center shadow-lg dark:bg-gray-800">
+        <Icon name="tabler:route-off" class="mx-auto h-12 w-12 text-gray-400" />
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
+          No routes scheduled. Create an order pickup to see optimized routes.
+        </p>
+      </div>
+    )}
+
+    <!-- Delivery Status -->
+    <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+      <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Active Deliveries</h3>
+      {deliveries.length > 0 ? (
+        <div class="space-y-4">
+          {deliveries.map((delivery) => (
+            <div
+              class="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+              key={delivery.id}
+            >
+              <div class="flex items-center">
+                <Icon name="tabler:package" class="mr-3 h-5 w-5 text-purple-600" />
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">Order #{delivery.order_id}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {delivery.delivery_distance_km} km | ₹{delivery.estimated_cost}
+                  </p>
+                </div>
+              </div>
+              <span
+                class={`rounded-full px-3 py-1 text-xs font-medium ${
+                  delivery.delivery_status === 'scheduled'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900'
+                    : delivery.delivery_status === 'in_transit'
+                      ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900'
+                      : 'bg-green-100 text-green-600 dark:bg-green-900'
+                }`}
+              >
+                {delivery.delivery_status.replace('_', ' ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p class="text-center text-gray-500 dark:text-gray-400 py-6">No active deliveries</p>
+      )}
+    </div>
+
+    <!-- Transparent Cost Formula -->
+    <div class="mt-8 rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+      <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">AgroGo Transparent Cost Formula</h3>
+      <div class="rounded-lg bg-purple-50 p-4 dark:bg-purple-900/20 text-sm text-gray-700 dark:text-gray-300">
+        <p class="font-medium">Rates: ₹50 / km (minimum 5 km) + ₹200 / pickup stop</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Routes automatically cluster nearby farms within 10 km using nearest-neighbor optimization to reduce delivery costs.</p>
+      </div>
+    </div>
+  </div>
+</PageLayout>

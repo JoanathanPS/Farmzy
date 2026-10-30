@@ -1,0 +1,39 @@
+site:
+  name: Farmzy
+  site: 'https://farmzy.app'
+  base: '/'
+  trailingSlash: false
+
+  googleSiteVerificationId: 
+
+# Default SEO metadata
+metadata:
+  title:
+    default: Farmzy
+    template: '%s — Farmzy'
+  description: "🌱 Smart Farming Platform - Soil Intelligence, Smart Irrigation, Marketplace & Rural Delivery"
+  robots:
+    index: true
+    follow: true
+  openGraph:
+    site_name: Farmzy
+    images:
+      - url: '~/assets/images/default.png'
+        width: 1200
+        height: 628
+    type: website
+  twitter:
+    handle: '@farmzy'
+    site: '@farmzy'
+    cardType: summary_large_image
+
+i18n:
+  language: en
+  textDirection: ltr
+
+apps:
+  blog:
+    isEnabled: false
+
+ui:
+  theme: 'system' # Values: "system" | "light" | "dark" | "light:only" | "dark:only"

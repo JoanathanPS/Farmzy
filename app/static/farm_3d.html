@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmzy - 3D Farm Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            z-index: 100;
+        }
+        
+        #info-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        #info-panel .farm-info {
+            margin-bottom: 10px;
+        }
+        
+        #info-panel .farm-info strong {
+            color: #34495e;
+        }
+        
+        #info-panel .zone-info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #ecf0f1;
+        }
+        
+        #info-panel .zone {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        #controls button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        #controls button:hover {
+            background: #2980b9;
+        }
+        
+        #legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        #legend h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        #legend .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        #legend .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info-panel">
+        <h2>🌾 Farmzy Model</h2>
+        <div class="farm-info">
+            <strong>Location:</strong> Poonamallee, Chennai<br>
+            <strong>Size:</strong> 2 Acres (8,093.72 m²)<br>
+            <strong>Crop:</strong> Paddy (Rice)<br>
+            <strong>Soil:</strong> Loamy<br>
+            <strong>Irrigation:</strong> Drip System
+        </div>
+        <div class="zone-info">
+            <strong>Zones:</strong>
+            <div class="zone">
+                <strong>Zone 1:</strong> 1 Acre (4,046.86 m²)
+            </div>
+            <div class="zone">
+                <strong>Zone 2:</strong> 1 Acre (4,046.86 m²)
+            </div>
+        </div>
+    </div>
+    
+    <div id="legend">
+        <h3>Legend</h3>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #27ae60;"></div>
+            <span>Paddy Crop</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #8b4513;"></div>
+            <span>Soil</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #3498db;"></div>
+            <span>Irrigation Lines</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #e74c3c;"></div>
+            <span>Soil Sensors</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f39c12;"></div>
+            <span>Zone Boundary</span>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <button onclick="resetCamera()">Reset View</button>
+        <button onclick="toggleIrrigation()">Toggle Irrigation</button>
+        <button onclick="toggleZones()">Toggle Zones</button>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Farm Model Data
+        const farmData = {
+            farm_id: "FARM_PNL_01",
+            location: "Poonamallee, Chennai",
+            area: 2,
+            area_unit: "acres",
+            area_m2: 8093.72,
+            soil_type: "loamy",
+            crop: "paddy",
+            irrigation_type: "drip",
+            zones: [
+                {
+                    zone_id: "Z1",
+                    area_acres: 1,
+                    area_m2: 4046.86
+                },
+                {
+                    zone_id: "Z2",
+                    area_acres: 1,
+                    area_m2: 4046.86
+                }
+            ]
+        };
+        
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue
+        
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 10;
+        controls.maxDistance = 200;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        scene.add(directionalLight);
+        
+        // Constants
+        const TOTAL_AREA_M2 = 8093.72;
+        const ZONE_AREA_M2 = 4046.86;
+        // Scale: 1 unit = 1 meter (for visualization, we'll scale down a bit)
+        const SCALE = 0.1; // 1 unit = 10 meters for better visualization
+        const FARM_WIDTH = Math.sqrt(TOTAL_AREA_M2) * SCALE; // ~90 units
+        const FARM_LENGTH = FARM_WIDTH; // Square farm for simplicity
+        const ZONE_WIDTH = Math.sqrt(ZONE_AREA_M2) * SCALE; // ~64 units
+        
+        // Ground plane (soil)
+        const groundGeometry = new THREE.PlaneGeometry(FARM_WIDTH, FARM_LENGTH);
+        const groundMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x8b4513 // Brown soil
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Zone 1 (Left half)
+        const zone1Geometry = new THREE.PlaneGeometry(ZONE_WIDTH, FARM_LENGTH);
+        const zone1Material = new THREE.MeshLambertMaterial({ 
+            color: 0x27ae60,
+            transparent: true,
+            opacity: 0.3
+        });
+        const zone1 = new THREE.Mesh(zone1Geometry, zone1Material);
+        zone1.rotation.x = -Math.PI / 2;
+        zone1.position.set(-ZONE_WIDTH/2, 0.01, 0);
+        scene.add(zone1);
+        
+        // Zone 2 (Right half)
+        const zone2Geometry = new THREE.PlaneGeometry(ZONE_WIDTH, FARM_LENGTH);
+        const zone2Material = new THREE.MeshLambertMaterial({ 
+            color: 0x2ecc71,
+            transparent: true,
+            opacity: 0.3
+        });
+        const zone2 = new THREE.Mesh(zone2Geometry, zone2Material);
+        zone2.rotation.x = -Math.PI / 2;
+        zone2.position.set(ZONE_WIDTH/2, 0.01, 0);
+        scene.add(zone2);
+        
+        // Zone boundaries
+        const zoneBoundaryMaterial = new THREE.LineBasicMaterial({ color: 0xf39c12, linewidth: 3 });
+        const zoneBoundaryGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0.1, -FARM_LENGTH/2),
+            new THREE.Vector3(0, 0.1, FARM_LENGTH/2)
+        ]);
+        const zoneBoundary = new THREE.Line(zoneBoundaryGeometry, zoneBoundaryMaterial);
+        scene.add(zoneBoundary);
+        
+        // Paddy crop representation (green grass-like)
+        const paddyGroup = new THREE.Group();
+        const paddyCount = 200; // Number of paddy plants to show
+        
+        for (let i = 0; i < paddyCount; i++) {
+            const paddyGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 8);
+            const paddyMaterial = new THREE.MeshLambertMaterial({ color: 0x27ae60 });
+            const paddy = new THREE.Mesh(paddyGeometry, paddyMaterial);
+            
+            // Random position within farm bounds
+            const x = (Math.random() - 0.5) * FARM_WIDTH * 0.9;
+            const z = (Math.random() - 0.5) * FARM_LENGTH * 0.9;
+            paddy.position.set(x, 0.25, z);
+            paddy.castShadow = true;
+            paddyGroup.add(paddy);
+        }
+        scene.add(paddyGroup);
+        
+        // Drip irrigation lines
+        const irrigationGroup = new THREE.Group();
+        const lineCount = 10; // Number of irrigation lines
+        
+        for (let i = 0; i < lineCount; i++) {
+            const lineGeometry = new THREE.CylinderGeometry(0.05, 0.05, FARM_LENGTH, 8);
+            const lineMaterial = new THREE.MeshLambertMaterial({ color: 0x3498db });
+            const line = new THREE.Mesh(lineGeometry, lineMaterial);
+            
+            const x = -FARM_WIDTH/2 + (i + 1) * (FARM_WIDTH / (lineCount + 1));
+            line.position.set(x, 0.1, 0);
+            line.rotation.z = Math.PI / 2;
+            line.castShadow = true;
+            irrigationGroup.add(line);
+            
+            // Drip emitters (small spheres along the line)
+            for (let j = 0; j < 20; j++) {
+                const emitterGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const emitterMaterial = new THREE.MeshLambertMaterial({ color: 0x2980b9 });
+                const emitter = new THREE.Mesh(emitterGeometry, emitterMaterial);
+                const z = -FARM_LENGTH/2 + (j + 1) * (FARM_LENGTH / 21);
+                emitter.position.set(x, 0.1, z);
+                irrigationGroup.add(emitter);
+            }
+        }
+        scene.add(irrigationGroup);
+        
+        // Soil sensors (one per zone)
+        const sensorGroup = new THREE.Group();
+        
+        // Zone 1 sensor
+        const sensor1Geometry = new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16);
+        const sensor1Material = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
+        const sensor1 = new THREE.Mesh(sensor1Geometry, sensor1Material);
+        sensor1.position.set(-ZONE_WIDTH/2, 0.25, 0);
+        sensor1.castShadow = true;
+        sensorGroup.add(sensor1);
+        
+        // Sensor indicator (small sphere on top)
+        const indicator1Geometry = new THREE.SphereGeometry(0.15, 8, 8);
+        const indicator1Material = new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+        const indicator1 = new THREE.Mesh(indicator1Geometry, indicator1Material);
+        indicator1.position.set(-ZONE_WIDTH/2, 0.55, 0);
+        sensorGroup.add(indicator1);
+        
+        // Zone 2 sensor
+        const sensor2Geometry = new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16);
+        const sensor2Material = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
+        const sensor2 = new THREE.Mesh(sensor2Geometry, sensor2Material);
+        sensor2.position.set(ZONE_WIDTH/2, 0.25, 0);
+        sensor2.castShadow = true;
+        sensorGroup.add(sensor2);
+        
+        const indicator2Geometry = new THREE.SphereGeometry(0.15, 8, 8);
+        const indicator2Material = new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+        const indicator2 = new THREE.Mesh(indicator2Geometry, indicator2Material);
+        indicator2.position.set(ZONE_WIDTH/2, 0.55, 0);
+        sensorGroup.add(indicator2);
+        
+        scene.add(sensorGroup);
+        
+        // Camera position
+        camera.position.set(50, 40, 50);
+        camera.lookAt(0, 0, 0);
+        
+        // Animation variables
+        let irrigationVisible = true;
+        let zonesVisible = true;
+        
+        // Control functions
+        function resetCamera() {
+            camera.position.set(50, 40, 50);
+            camera.lookAt(0, 0, 0);
+            controls.reset();
+        }
+        
+        function toggleIrrigation() {
+            irrigationVisible = !irrigationVisible;
+            irrigationGroup.visible = irrigationVisible;
+        }
+        
+        function toggleZones() {
+            zonesVisible = !zonesVisible;
+            zone1.visible = zonesVisible;
+            zone2.visible = zonesVisible;
+            zoneBoundary.visible = zonesVisible;
+        }
+        
+        // Make functions global
+        window.resetCamera = resetCamera;
+        window.toggleIrrigation = toggleIrrigation;
+        window.toggleZones = toggleZones;
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate sensors slightly for visual interest
+            sensorGroup.rotation.y += 0.005;
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+---
+import { Icon } from 'astro-icon/components';
+import PageLayout from '~/layouts/PageLayout.astro';
+import { soilyticsAPI } from '~/lib/api/soilytics';
+import { hydroiqAPI } from '~/lib/api/hydroiq';
+import { marketplaceAPI } from '~/lib/api/marketplace';
+import { agrogoAPI } from '~/lib/api/agrogo';
+
+const metadata = {
+  title: 'Farmzy Dashboard',
+  description: 'Smart Farming Platform - Unified Dashboard',
+};
+
+// Fetch data (in production, this would be done client-side)
+const deviceId = 'ESP_FARM_01';
+const farmId = 'FARM_PNL_01';
+
+let soilHealth = null;
+let irrigationDecision = null;
+let listings = [];
+let deliveries = [];
+
+try {
+  soilHealth = await soilyticsAPI.getSoilHealth(deviceId).catch(() => null);
+  irrigationDecision = await hydroiqAPI.computeIrrigation({ farm_id: farmId }).catch(() => null);
+  listings = await marketplaceAPI.getListings(farmId).catch(() => []);
+  deliveries = []; // await agrogoAPI.getRoutes(new Date().toISOString()).catch(() => []);
+} catch (e) {
+  console.error('Error fetching dashboard data:', e);
+}
+---
+
+<PageLayout metadata={metadata}>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-12 text-center">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">
+        Farmzy Dashboard
+      </h1>
+      <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+        Smart Farming Intelligence Platform
+      </p>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="mb-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <!-- Soil Health Card -->
+      <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Soil Health</p>
+            {soilHealth ? (
+              <p class="mt-2 text-3xl font-bold text-green-600">
+                {soilHealth.soil_score.toFixed(0)}
+              </p>
+            ) : (
+              <p class="mt-2 text-3xl font-bold text-gray-400">--</p>
+            )}
+          </div>
+          <div class="rounded-full bg-green-100 p-3 dark:bg-green-900">
+            <Icon name="tabler:plant" class="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+        <a
+          href="/soilytics"
+          class="mt-4 block text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400"
+        >
+          View Details →
+        </a>
+      </div>
+
+      <!-- Irrigation Status Card -->
+      <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Irrigation</p>
+            {irrigationDecision?.decision ? (
+              <p class="mt-2 text-3xl font-bold text-blue-600">
+                {irrigationDecision.decision.irrigate ? 'ON' : 'OFF'}
+              </p>
+            ) : (
+              <p class="mt-2 text-3xl font-bold text-gray-400">--</p>
+            )}
+          </div>
+          <div class="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
+            <Icon name="tabler:droplet" class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+        <a
+          href="/hydroiq"
+          class="mt-4 block text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+        >
+          View Details →
+        </a>
+      </div>
+
+      <!-- Marketplace Listings Card -->
+      <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Listings</p>
+            <p class="mt-2 text-3xl font-bold text-yellow-600">
+              {listings.length}
+            </p>
+          </div>
+          <div class="rounded-full bg-yellow-100 p-3 dark:bg-yellow-900">
+            <Icon name="tabler:shopping-cart" class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+          </div>
+        </div>
+        <a
+          href="/marketplace"
+          class="mt-4 block text-sm font-medium text-yellow-600 hover:text-yellow-700 dark:text-yellow-400"
+        >
+          View Details →
+        </a>
+      </div>
+
+      <!-- Deliveries Card -->
+      <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Deliveries</p>
+            <p class="mt-2 text-3xl font-bold text-purple-600">
+              {deliveries.length}
+            </p>
+          </div>
+          <div class="rounded-full bg-purple-100 p-3 dark:bg-purple-900">
+            <Icon name="tabler:truck" class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+        <a
+          href="/agrogo"
+          class="mt-4 block text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400"
+        >
+          View Details →
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mb-12">
+      <h2 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Quick Actions</h2>
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <a
+          href="/soilytics"
+          class="flex items-center justify-center rounded-lg bg-green-600 px-6 py-4 text-white transition hover:bg-green-700"
+        >
+          <Icon name="tabler:plant" class="mr-2 h-5 w-5" />
+          Check Soil Health
+        </a>
+        <a
+          href="/hydroiq"
+          class="flex items-center justify-center rounded-lg bg-blue-600 px-6 py-4 text-white transition hover:bg-blue-700"
+        >
+          <Icon name="tabler:droplet" class="mr-2 h-5 w-5" />
+          Compute Irrigation
+        </a>
+        <a
+          href="/marketplace"
+          class="flex items-center justify-center rounded-lg bg-yellow-600 px-6 py-4 text-white transition hover:bg-yellow-700"
+        >
+          <Icon name="tabler:shopping-cart" class="mr-2 h-5 w-5" />
+          Create Listing
+        </a>
+        <a
+          href="/agrogo"
+          class="flex items-center justify-center rounded-lg bg-purple-600 px-6 py-4 text-white transition hover:bg-purple-700"
+        >
+          <Icon name="tabler:truck" class="mr-2 h-5 w-5" />
+          Schedule Delivery
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div>
+      <h2 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Recent Activity</h2>
+      <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="space-y-4">
+          {soilHealth && (
+            <div class="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-700">
+              <div class="flex items-center">
+                <Icon name="tabler:plant" class="mr-3 h-5 w-5 text-green-600" />
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">Soil Health Updated</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Score: {soilHealth.soil_score.toFixed(0)}/100
+                  </p>
+                </div>
+              </div>
+              <span class="text-sm text-gray-500 dark:text-gray-400">
+                {new Date(soilHealth.date).toLocaleDateString()}
+              </span>
+            </div>
+          )}
+          {irrigationDecision?.decision && (
+            <div class="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-700">
+              <div class="flex items-center">
+                <Icon name="tabler:droplet" class="mr-3 h-5 w-5 text-blue-600" />
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">Irrigation Decision</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {irrigationDecision.decision.irrigate ? 'Irrigation Recommended' : 'No Irrigation Needed'}
+                  </p>
+                </div>
+              </div>
+              <span class="text-sm text-gray-500 dark:text-gray-400">Today</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+</PageLayout>
