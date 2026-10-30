@@ -165,3 +165,21 @@ CREATE INDEX IF NOT EXISTS idx_routes_date ON public.routes(date);
 
 -- Enable Realtime for Listings (for live updates in frontend)
 ALTER PUBLICATION supabase_realtime ADD TABLE public.listings;
+
+-- ========================================================
+-- Grant Permissions & Disable RLS for Direct Supabase API
+-- (Allows frontend & backend to read/write using SUPABASE_KEY without database passwords)
+-- ========================================================
+ALTER TABLE public.soil_readings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.soil_health DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recommendations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.irrigation_plans DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.irrigation_executions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.listings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deliveries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.routes DISABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+

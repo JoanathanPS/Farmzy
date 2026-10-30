@@ -34,10 +34,12 @@ class Settings(BaseSettings):
     app_name: str = "Farmzy"
     app_version: str = "1.0.0"
     debug: bool = False
+    site_url: Optional[str] = "https://farmzy.joanathan.in"
     
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

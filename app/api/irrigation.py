@@ -1,4 +1,4 @@
-"""HydroIQ - Smart Irrigation Intelligence API endpoints."""
+"""HydroIQ - Smart Irrigation Intelligence API endpoints (Supabase-first)."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -6,12 +6,12 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from app.database import get_db
-from app.models import IrrigationPlanDB, IrrigationExecutionDB
+from app.models import IrrigationPlanDB, IrrigationExecutionDB, SoilHealthDB
 from app.hydroiq.engine import HydroIQEngine
 from app.hydroiq.models import IrrigationDecision, SoilData, WeatherData
 from app.hydroiq.weather_service import weather_service
 from app.core.farm_model import FarmModel, DEFAULT_FARM
-from app.models import SoilHealthDB
+from app.supabase_client import supabase
 
 router = APIRouter(prefix="/api/irrigation", tags=["irrigation"])
 
@@ -35,39 +35,32 @@ class IrrigationExecuteRequest(BaseModel):
 @router.post("/compute")
 async def compute_irrigation(
     request: IrrigationComputeRequest,
-    db: Session = Depends(get_db),
+    db: Optional[Session] = Depends(get_db),
 ):
     """
     Compute irrigation decision for a farm.
-    
-    Uses HydroIQ engine to calculate:
-    - ET₀ (Hargreaves method)
-    - Crop water requirement
-    - Net water need (after rainfall)
-    - Soil moisture feedback
-    - Zone distribution
-    - Cycle strategy
     """
     try:
-        # Get farm model (in production, fetch from DB)
-        # For now, use default farm
         farm = DEFAULT_FARM
-        if request.farm_id != DEFAULT_FARM.farm_id:
-            # In production, fetch from database
-            farm = DEFAULT_FARM  # Fallback to default
-        
-        # Get soil data
         soil_data = None
+
         if request.soil_data:
             soil_data = SoilData(**request.soil_data)
-        else:
-            # Try to get latest soil health from Soilytics
+        elif supabase.is_configured:
+            device_id = f"ESP_{request.farm_id}"
+            sh = supabase.get_latest_soil_health(device_id=device_id)
+            if sh:
+                soil_data = SoilData(
+                    moisture=float(sh.get("moisture_value", 38.0)),
+                    soil_score=float(sh.get("soil_score", 70.0)),
+                    timestamp=datetime.fromisoformat(sh["date"].replace("Z", "+00:00")) if "date" in sh else None,
+                )
+        elif db:
             try:
                 device_id = f"ESP_{request.farm_id}"
                 latest_health = db.query(SoilHealthDB).filter(
                     SoilHealthDB.device_id == device_id
                 ).order_by(desc(SoilHealthDB.date)).first()
-                
                 if latest_health:
                     soil_data = SoilData(
                         moisture=latest_health.moisture_value,
@@ -76,47 +69,58 @@ async def compute_irrigation(
                     )
             except:
                 pass
-            
-            if not soil_data:
-                # Use default if can't fetch
-                soil_data = SoilData(moisture=38.0, soil_score=70.0)
-        
+
         if not soil_data:
             soil_data = SoilData(moisture=38.0, soil_score=70.0)
-        
+
         # Get weather data
         weather = None
         if request.weather_data:
             weather = WeatherData(**request.weather_data)
         else:
-            # Fetch from weather service
             weather = await weather_service.get_weather(
                 farm.location.lat,
                 farm.location.lng,
             )
-        
+
         # Compute irrigation decision
         decision = engine.compute_irrigation_decision(farm, soil_data, weather)
-        
-        # Store plan in database
-        db_plan = IrrigationPlanDB(
-            farm_id=farm.farm_id,
-            irrigate=str(decision.irrigate).lower(),
-            net_water_liters=decision.net_water_liters,
-            zones=[zone.dict() for zone in decision.zones],
-            strategy=decision.strategy.dict(),
-            reasons=decision.reasons,
-            confidence=decision.confidence,
-            computed_values=decision.computed_values,
-            status="pending",
-        )
-        db.add(db_plan)
-        db.commit()
-        db.refresh(db_plan)
-        
+
+        plan_id = None
+        if supabase.is_configured:
+            created_plan = supabase.create_irrigation_plan({
+                "farm_id": farm.farm_id,
+                "irrigate": str(decision.irrigate).lower(),
+                "net_water_liters": decision.net_water_liters,
+                "zones": [zone.dict() for zone in decision.zones],
+                "strategy": decision.strategy.dict(),
+                "reasons": decision.reasons,
+                "confidence": decision.confidence,
+                "computed_values": decision.computed_values,
+                "status": "pending",
+            })
+            if created_plan:
+                plan_id = created_plan.get("id")
+        elif db:
+            db_plan = IrrigationPlanDB(
+                farm_id=farm.farm_id,
+                irrigate=str(decision.irrigate).lower(),
+                net_water_liters=decision.net_water_liters,
+                zones=[zone.dict() for zone in decision.zones],
+                strategy=decision.strategy.dict(),
+                reasons=decision.reasons,
+                confidence=decision.confidence,
+                computed_values=decision.computed_values,
+                status="pending",
+            )
+            db.add(db_plan)
+            db.commit()
+            db.refresh(db_plan)
+            plan_id = db_plan.id
+
         return {
             "success": True,
-            "plan_id": db_plan.id,
+            "plan_id": plan_id,
             "decision": {
                 "irrigate": decision.irrigate,
                 "net_water_liters": decision.net_water_liters,
@@ -128,30 +132,51 @@ async def compute_irrigation(
                 "timestamp": decision.timestamp.isoformat(),
             },
         }
-        
+
     except Exception as e:
-        db.rollback()
+        if db:
+            db.rollback()
         raise HTTPException(status_code=500, detail=f"Error computing irrigation: {str(e)}")
 
 
 @router.post("/execute")
 async def execute_irrigation(
     request: IrrigationExecuteRequest,
-    db: Session = Depends(get_db),
+    db: Optional[Session] = Depends(get_db),
 ):
     """
     Mark an irrigation plan as executed and log execution.
     """
     try:
-        # Get plan
+        if supabase.is_configured:
+            supabase.update(
+                "irrigation_plans",
+                {"status": "executing"},
+                {"id": f"eq.{request.plan_id}"}
+            )
+            exec_record = supabase.insert("irrigation_executions", {
+                "plan_id": request.plan_id,
+                "farm_id": DEFAULT_FARM.farm_id,
+                "executed_zones": request.zones,
+                "execution_start": datetime.utcnow().isoformat(),
+                "status": "executing",
+            })
+            return {
+                "success": True,
+                "execution_id": exec_record.get("id") if exec_record else None,
+                "message": "Irrigation execution logged",
+            }
+
+        if not db:
+            raise HTTPException(status_code=500, detail="Database not configured")
+
         plan = db.query(IrrigationPlanDB).filter(
             IrrigationPlanDB.id == request.plan_id
         ).first()
-        
+
         if not plan:
             raise HTTPException(status_code=404, detail="Irrigation plan not found")
-        
-        # Create execution record
+
         execution = IrrigationExecutionDB(
             plan_id=plan.id,
             farm_id=plan.farm_id,
@@ -160,52 +185,61 @@ async def execute_irrigation(
             status="executing",
         )
         db.add(execution)
-        
-        # Update plan status
         plan.status = "executing"
-        
         db.commit()
         db.refresh(execution)
-        
+
         return {
             "success": True,
             "execution_id": execution.id,
             "message": "Irrigation execution logged",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        if db:
+            db.rollback()
         raise HTTPException(status_code=500, detail=f"Error logging execution: {str(e)}")
 
 
 @router.get("/history")
 async def get_irrigation_history(
     farm_id: str = Query(..., description="Farm ID"),
-    start_date: Optional[str] = Query(None, description="Start date (ISO format)"),
-    end_date: Optional[str] = Query(None, description="End date (ISO format)"),
     limit: int = Query(50, description="Number of records"),
-    db: Session = Depends(get_db),
+    db: Optional[Session] = Depends(get_db),
 ):
     """
     Retrieve irrigation history for a farm.
     """
     try:
-        query = db.query(IrrigationPlanDB).filter(
+        if supabase.is_configured:
+            plans = supabase.get_irrigation_plans(farm_id=farm_id, limit=limit)
+            return {
+                "success": True,
+                "plans": [
+                    {
+                        "id": plan.get("id"),
+                        "farm_id": plan.get("farm_id"),
+                        "irrigate": plan.get("irrigate") == "true",
+                        "net_water_liters": plan.get("net_water_liters"),
+                        "zones": plan.get("zones"),
+                        "confidence": plan.get("confidence"),
+                        "status": plan.get("status"),
+                        "created_at": plan.get("created_at"),
+                    }
+                    for plan in plans
+                ],
+                "total": len(plans),
+            }
+
+        if not db:
+            return {"success": True, "plans": [], "total": 0}
+
+        plans = db.query(IrrigationPlanDB).filter(
             IrrigationPlanDB.farm_id == farm_id
-        )
-        
-        if start_date:
-            start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-            query = query.filter(IrrigationPlanDB.created_at >= start)
-        
-        if end_date:
-            end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-            query = query.filter(IrrigationPlanDB.created_at <= end)
-        
-        plans = query.order_by(desc(IrrigationPlanDB.created_at)).limit(limit).all()
-        
+        ).order_by(desc(IrrigationPlanDB.created_at)).limit(limit).all()
+
         return {
             "success": True,
             "plans": [
@@ -223,7 +257,7 @@ async def get_irrigation_history(
             ],
             "total": len(plans),
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
 
@@ -232,47 +266,33 @@ async def get_irrigation_history(
 async def get_irrigation_insights(
     farm_id: str = Query(..., description="Farm ID"),
     period: str = Query("month", description="Period: week, month, year"),
-    db: Session = Depends(get_db),
+    db: Optional[Session] = Depends(get_db),
 ):
     """
     Provide analytics and insights for irrigation.
     """
     try:
-        # Calculate date range
-        now = datetime.utcnow()
-        if period == "week":
-            start_date = now - timedelta(days=7)
-        elif period == "month":
-            start_date = now - timedelta(days=30)
-        elif period == "year":
-            start_date = now - timedelta(days=365)
-        else:
-            start_date = now - timedelta(days=30)
-        
-        # Get plans in period
-        plans = db.query(IrrigationPlanDB).filter(
-            IrrigationPlanDB.farm_id == farm_id,
-            IrrigationPlanDB.created_at >= start_date,
-            IrrigationPlanDB.irrigate == "true",
-        ).all()
-        
-        # Get executions
-        executions = db.query(IrrigationExecutionDB).filter(
-            IrrigationExecutionDB.farm_id == farm_id,
-            IrrigationExecutionDB.execution_start >= start_date,
-        ).all()
-        
-        # Calculate metrics
-        total_water = sum(plan.net_water_liters for plan in plans)
-        total_sessions = len(executions)
+        total_water = 0.0
+        total_sessions = 0
+
+        if supabase.is_configured:
+            plans = supabase.get_irrigation_plans(farm_id=farm_id, limit=50)
+            irrigated_plans = [p for p in plans if p.get("irrigate") == "true"]
+            total_water = sum(float(p.get("net_water_liters", 0)) for p in irrigated_plans)
+            total_sessions = len(irrigated_plans)
+        elif db:
+            plans = db.query(IrrigationPlanDB).filter(
+                IrrigationPlanDB.farm_id == farm_id,
+                IrrigationPlanDB.irrigate == "true",
+            ).all()
+            total_water = sum(plan.net_water_liters for plan in plans)
+            total_sessions = len(plans)
+
         avg_water = total_water / total_sessions if total_sessions > 0 else 0
-        
-        # Estimate water savings (compared to traditional 10mm irrigation)
-        # This is a simplified calculation
-        farm = DEFAULT_FARM  # In production, fetch from DB
-        traditional_water = farm.area_m2 * 10 * total_sessions  # 10mm per session
+        farm = DEFAULT_FARM
+        traditional_water = farm.area_m2 * 10 * total_sessions
         water_saved = max(0, traditional_water - total_water)
-        
+
         return {
             "success": True,
             "insights": {
@@ -282,12 +302,12 @@ async def get_irrigation_insights(
                 "water_savings_estimate_liters": round(water_saved, 2),
                 "efficiency_score": round((water_saved / traditional_water * 100) if traditional_water > 0 else 0, 1),
                 "trends": {
-                    "water_usage": "stable",  # Would calculate from historical data
+                    "water_usage": "stable",
                     "frequency": "stable",
                 },
             },
             "period": period,
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating insights: {str(e)}")

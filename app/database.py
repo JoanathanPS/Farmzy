@@ -34,9 +34,10 @@ else:
 
 
 def get_db():
-    """Dependency for getting database session."""
+    """Dependency for getting database session (returns None when using direct Supabase API)."""
     if SessionLocal is None:
-        raise Exception("Supabase Database not configured. Please set DATABASE_URL in your .env file.")
+        yield None
+        return
     db = SessionLocal()
     try:
         yield db
