@@ -75,3 +75,4 @@ npm run dev
    - Framework will automatically be detected as **Astro**.
 3. In **Settings -> Environment Variables**:
    - Add `PUBLIC_API_URL` pointing to your hosted FastAPI backend URL.
+

@@ -17,3 +17,4 @@ echo Farmzy Backend:  http://localhost:8000
 echo API Docs:        http://localhost:8000/docs
 echo Astro Frontend:  http://localhost:4321
 echo ===================================================
+
